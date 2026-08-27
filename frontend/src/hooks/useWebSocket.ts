@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { LiveReading } from '../types'
+import { WS_BASE } from '../config'
 
 const MAX_HISTORY = 60
 
@@ -19,7 +20,7 @@ export function useWebSocket(token: string | null) {
 
   useEffect(() => {
     if (!token) return
-    const url = `ws://localhost:8000/dashboard/ws/live?token=${token}`
+    const url = `${WS_BASE}/dashboard/ws/live?token=${token}`
     const ws = new WebSocket(url)
     wsRef.current = ws
 

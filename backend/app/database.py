@@ -1,12 +1,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
-
-DATABASE_URL = "sqlite+aiosqlite:///./printpulse.db"
+from app.config import settings
 
 engine = create_async_engine(
-    DATABASE_URL,
+    settings.DATABASE_URL,
     echo=False,
-    connect_args={"check_same_thread": False},
+    pool_size=10,
+    max_overflow=20,
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -15,10 +15,13 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,
 )
 
+
 class Base(DeclarativeBase):
     pass
 
+
 async def get_db() -> AsyncSession:
+    """FastAPI dependency — yields a DB session and closes it after the request."""
     async with AsyncSessionLocal() as session:
         try:
             yield session

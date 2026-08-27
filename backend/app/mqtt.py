@@ -1,7 +1,5 @@
 import json
 import logging
-import ssl
-import asyncio
 from datetime import datetime, timezone
 
 import aiomqtt
@@ -57,9 +55,9 @@ async def _handle_message(payload: dict, db: AsyncSession) -> FaultEvent:
 
 async def mqtt_listener():
     """
-    Long-running background task that subscribes to the HiveMQ MQTT topic
+    Long-running background task that subscribes to the ESP32 MQTT topic
     and processes every incoming message.
-    Supports TLS encryption (port 8883) and auto-reconnects on connection loss.
+    Reconnects automatically on connection loss.
     """
     logger.info(f"MQTT listener starting — broker={settings.MQTT_BROKER}:{settings.MQTT_PORT} topic={settings.MQTT_TOPIC}")
 
@@ -73,21 +71,14 @@ async def mqtt_listener():
             if settings.MQTT_PASSWORD:
                 connect_kwargs["password"] = settings.MQTT_PASSWORD
 
-            # Configure SSL/TLS parameters required by HiveMQ Cloud (port 8883)
-            if settings.MQTT_PORT == 8883:
-                connect_kwargs["tls_params"] = aiomqtt.TLSParameters(
-                    cert_reqs=ssl.CERT_REQUIRED,
-                    tls_version=ssl.PROTOCOL_TLSv1_2,
-                )
-
             async with aiomqtt.Client(
                 hostname=settings.MQTT_BROKER,
                 port=settings.MQTT_PORT,
                 **connect_kwargs,
             ) as client:
-                logger.info("MQTT connected successfully to HiveMQ.")
+                logger.info("MQTT connected.")
                 await client.subscribe(settings.MQTT_TOPIC)
-                logger.info(f"Subscribed to topic: {settings.MQTT_TOPIC}")
+                logger.info(f"Subscribed to {settings.MQTT_TOPIC}")
 
                 async for message in client.messages:
                     try:
@@ -105,7 +96,9 @@ async def mqtt_listener():
 
         except aiomqtt.MqttError as e:
             logger.warning(f"MQTT connection lost ({e}). Reconnecting in {reconnect_interval}s…")
+            import asyncio
             await asyncio.sleep(reconnect_interval)
         except Exception as e:
             logger.error(f"Unexpected MQTT error: {e}", exc_info=True)
+            import asyncio
             await asyncio.sleep(reconnect_interval)

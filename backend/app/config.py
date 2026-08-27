@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 from typing import List
 
 
@@ -7,6 +8,29 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://printpulse:password@localhost:5432/printpulse_db"
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def _use_asyncpg_driver(cls, v: str) -> str:
+        # Managed Postgres providers (Railway, Render, Heroku, etc.) inject
+        # DATABASE_URL as postgres:// or postgresql://, which is the psycopg2
+        # scheme. SQLAlchemy's async engine needs the asyncpg driver spelled
+        # out explicitly, so rewrite it rather than requiring a manually
+        # edited env var on every deploy.
+        if v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql+asyncpg://", 1)
+        if v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
+
+    # CORS — comma-separated list of allowed frontend origins. Defaults cover
+    # local dev only; set this in production to your deployed frontend URL
+    # (e.g. https://printpulse.vercel.app).
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+
+    @property
+    def cors_origins_list(self) -> List[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     # JWT
     SECRET_KEY: str = "change-this-secret"

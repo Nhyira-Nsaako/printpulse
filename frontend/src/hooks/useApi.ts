@@ -1,7 +1,6 @@
 import { useCallback } from 'react'
 import { FaultEvent, FaultStats, TrendPoint } from '../types'
-
-const API = '/api'
+import { API_BASE as API } from '../config'
 
 export function useApi(token: string | null) {
   const headers = useCallback(() => ({
