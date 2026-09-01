@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from sqlalchemy import (
-    String, Float, DateTime, Boolean, Integer,
+    String, Float, DateTime, Boolean, Integer, BigInteger,
     ForeignKey, Enum as SAEnum, Text
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -28,7 +28,6 @@ class User(Base):
         default=lambda: datetime.now(timezone.utc)
     )
 
-    # Alert preferences
     alert_email: Mapped[str] = mapped_column(String(255), nullable=True)
     alert_phone: Mapped[str] = mapped_column(String(30), nullable=True)
     alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -46,26 +45,22 @@ class FaultEvent(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
-    # Classification result
     fault_class: Mapped[FaultClass] = mapped_column(
         SAEnum(FaultClass, name="fault_class_enum"), nullable=False, index=True
     )
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
 
-    # Raw sensor readings at time of classification
     accel_rms_z: Mapped[float] = mapped_column(Float, nullable=True)
     current_rms: Mapped[float] = mapped_column(Float, nullable=True)
     temperature: Mapped[float] = mapped_column(Float, nullable=True)
 
-    # Timestamps
-   esp32_timestamp: Mapped[int] = mapped_column(BigInteger, nullable=True)
+    esp32_timestamp: Mapped[int] = mapped_column(BigInteger, nullable=True)
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         index=True,
     )
 
-    # Alert tracking
     alert_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     acknowledged: Mapped[bool] = mapped_column(Boolean, default=False)
     acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
