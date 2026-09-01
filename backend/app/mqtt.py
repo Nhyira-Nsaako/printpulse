@@ -1,5 +1,7 @@
 import json
 import logging
+import ssl
+import asyncio
 from datetime import datetime, timezone
 
 import aiomqtt
@@ -7,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import AsyncSessionLocal
-from app.models import FaultEvent, FaultClass
+from app.models import FaultEvent
 from app.schemas import MQTTPayload
 from app.websocket import manager
 from app.alerts import dispatch_alerts
@@ -18,10 +20,8 @@ logger = logging.getLogger(__name__)
 async def _handle_message(payload: dict, db: AsyncSession) -> FaultEvent:
     """Parse the MQTT payload, persist to DB, broadcast to WebSocket clients."""
 
-    # Validate with Pydantic
     data = MQTTPayload(**payload)
 
-    # Persist to DB
     event = FaultEvent(
         fault_class=data.fault_class,
         confidence=data.confidence,
@@ -35,7 +35,6 @@ async def _handle_message(payload: dict, db: AsyncSession) -> FaultEvent:
     await db.commit()
     await db.refresh(event)
 
-    # Broadcast to all connected WebSocket clients
     await manager.broadcast({
         "type": "live_reading",
         "fault_class": event.fault_class.value,
@@ -47,9 +46,7 @@ async def _handle_message(payload: dict, db: AsyncSession) -> FaultEvent:
         "event_id": event.id,
     })
 
-    # Dispatch email / SMS alerts if threshold exceeded
     await dispatch_alerts(event, db)
-
     return event
 
 
@@ -59,22 +56,25 @@ async def mqtt_listener():
     and processes every incoming message.
     Reconnects automatically on connection loss.
     """
-    logger.info(f"MQTT listener starting — broker={settings.MQTT_BROKER}:{settings.MQTT_PORT} topic={settings.MQTT_TOPIC}")
+    logger.info(
+        f"MQTT listener starting — "
+        f"broker={settings.MQTT_BROKER}:{settings.MQTT_PORT} "
+        f"topic={settings.MQTT_TOPIC}"
+    )
 
-    reconnect_interval = 5  # seconds
+    reconnect_interval = 5
 
     while True:
         try:
-            connect_kwargs = {}
-            if settings.MQTT_USERNAME:
-                connect_kwargs["username"] = settings.MQTT_USERNAME
-            if settings.MQTT_PASSWORD:
-                connect_kwargs["password"] = settings.MQTT_PASSWORD
+            # TLS context for HiveMQ cloud (port 8883)
+            tls_context = ssl.create_default_context()
 
             async with aiomqtt.Client(
                 hostname=settings.MQTT_BROKER,
                 port=settings.MQTT_PORT,
-                **connect_kwargs,
+                username=settings.MQTT_USERNAME if settings.MQTT_USERNAME else None,
+                password=settings.MQTT_PASSWORD if settings.MQTT_PASSWORD else None,
+                tls_context=tls_context,
             ) as client:
                 logger.info("MQTT connected.")
                 await client.subscribe(settings.MQTT_TOPIC)
@@ -90,15 +90,22 @@ async def mqtt_listener():
                                 f"({event.confidence*100:.1f}%)"
                             )
                     except json.JSONDecodeError:
-                        logger.warning(f"Non-JSON MQTT payload received: {message.payload}")
+                        logger.warning(
+                            f"Non-JSON MQTT payload: {message.payload}"
+                        )
                     except Exception as e:
-                        logger.error(f"Error handling MQTT message: {e}", exc_info=True)
+                        logger.error(
+                            f"Error handling MQTT message: {e}",
+                            exc_info=True
+                        )
 
         except aiomqtt.MqttError as e:
-            logger.warning(f"MQTT connection lost ({e}). Reconnecting in {reconnect_interval}s…")
-            import asyncio
+            logger.warning(
+                f"MQTT connection lost ({e}). "
+                f"Reconnecting in {reconnect_interval}s…"
+            )
             await asyncio.sleep(reconnect_interval)
+
         except Exception as e:
             logger.error(f"Unexpected MQTT error: {e}", exc_info=True)
-            import asyncio
             await asyncio.sleep(reconnect_interval)
