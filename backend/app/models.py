@@ -58,7 +58,7 @@ class FaultEvent(Base):
     temperature: Mapped[float] = mapped_column(Float, nullable=True)
 
     # Timestamps
-    esp32_timestamp: Mapped[int] = mapped_column(Integer, nullable=True)  # Unix ms from ESP32
+   esp32_timestamp: Mapped[int] = mapped_column(BigInteger, nullable=True)
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
