@@ -18,6 +18,21 @@ export function useAuth() {
     return true
   }, [])
 
+  const register = useCallback(async (email: string, username: string, password: string) => {
+    setError(null)
+    const res = await fetch(`${API}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, username, password }),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setError(data.detail ?? 'Registration failed. Please try again.')
+      return false
+    }
+    return true
+  }, [])
+
   const logout = useCallback(() => {
     localStorage.removeItem('pp_token')
     setToken(null)
@@ -27,9 +42,11 @@ export function useAuth() {
   const fetchMe = useCallback(async (t?: string) => {
     const tok = t ?? token
     if (!tok) return
-    const res = await fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${tok}` } })
+    const res = await fetch(`${API}/auth/me`, {
+      headers: { Authorization: `Bearer ${tok}` },
+    })
     if (res.ok) setUser(await res.json())
   }, [token])
 
-  return { token, user, error, login, logout, fetchMe }
+  return { token, user, error, login, register, logout, fetchMe }
 }
