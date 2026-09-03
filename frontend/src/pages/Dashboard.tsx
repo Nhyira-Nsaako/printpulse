@@ -8,7 +8,7 @@ import { AlertSettings } from '../components/AlertSettings'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useApi } from '../hooks/useApi'
 import { useAlerts } from '../hooks/useAlerts'
-import { FaultEvent, FaultStats, LiveReading } from '../types'
+import { FaultEvent, FaultStats } from '../types'
 import { FAULT_COLORS } from '../utils/faultUtils'
 
 interface Props {
@@ -17,6 +17,12 @@ interface Props {
 }
 
 type Tab = 'live' | 'log' | 'settings'
+
+const TAB_LABELS: Record<Tab, string> = {
+  live:     '⚡ Live',
+  log:      '📋 Fault Log',
+  settings: '⚙ Settings',
+}
 
 export function Dashboard({ token, onLogout }: Props) {
   const { latest, history, connected } = useWebSocket(token)
@@ -27,7 +33,9 @@ export function Dashboard({ token, onLogout }: Props) {
   const [events, setEvents] = useState<FaultEvent[]>([])
   const [filter, setFilter] = useState('ALL')
   const [tab, setTab] = useState<Tab>('live')
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('pp_theme') === 'dark')
+  const [darkMode, setDarkMode] = useState(
+    () => localStorage.getItem('pp_theme') === 'dark'
+  )
 
   // Apply theme
   useEffect(() => {
@@ -35,7 +43,6 @@ export function Dashboard({ token, onLogout }: Props) {
     localStorage.setItem('pp_theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
 
-  // Load stats on mount and after each new reading
   const refreshStats = useCallback(async () => {
     const s = await fetchStats()
     if (s) setStats(s)
@@ -49,7 +56,6 @@ export function Dashboard({ token, onLogout }: Props) {
   useEffect(() => { refreshStats(); refreshFaults() }, [])
   useEffect(() => { refreshFaults() }, [filter])
 
-  // Check alerts on every new reading
   useEffect(() => {
     if (latest) {
       checkAndAlert(latest)
@@ -62,18 +68,24 @@ export function Dashboard({ token, onLogout }: Props) {
     if (ok) refreshFaults()
   }
 
-  // Header colour pulse on fault
-  const headerColor = latest ? FAULT_COLORS[latest.fault_class] : 'var(--accent)'
+  const headerColor = latest
+    ? FAULT_COLORS[latest.fault_class]
+    : 'var(--accent)'
 
   return (
     <div className="dashboard">
-      {/* ── Header ── */}
-      <header className="header" style={{ borderBottomColor: alertActive ? headerColor : 'var(--border)' }}>
+
+      {/* Header */}
+      <header
+        className="header"
+        style={{ borderBottomColor: alertActive ? headerColor : 'var(--border)' }}
+      >
         <div className="header-left">
           <span className="logo-pulse" style={{ background: headerColor }} />
           <span className="header-title">PrintPulse</span>
           <span className="header-sub">Faultline Command Center</span>
         </div>
+
         <nav className="header-nav">
           {(['live', 'log', 'settings'] as Tab[]).map(t => (
             <button
@@ -81,25 +93,32 @@ export function Dashboard({ token, onLogout }: Props) {
               className={`nav-btn ${tab === t ? 'nav-btn--active' : ''}`}
               onClick={() => setTab(t)}
             >
-              {t === 'live' ? '⚡ Live' : t === 'log' ? '📋 Fault Log' : '⚙ Settings'}
+              {TAB_LABELS[t]}
             </button>
           ))}
         </nav>
+
         <div className="header-right">
-          <button className="icon-btn" title="Toggle theme" onClick={() => setDarkMode(d => !d)}>
+          <button
+            className="icon-btn"
+            title="Toggle theme"
+            onClick={() => setDarkMode(d => !d)}
+          >
             {darkMode ? '☀' : '☾'}
           </button>
-          <button className="btn btn--sm btn--outline" onClick={onLogout}>Sign out</button>
+          <button className="btn btn--sm btn--outline" onClick={onLogout}>
+            Sign out
+          </button>
         </div>
       </header>
 
-      {/* ── Alert Banner ── */}
+      {/* Alert banner */}
       <AlertBanner active={alertActive} reading={latest} onDismiss={dismissAlert} />
 
-      {/* ── Stats Bar ── */}
+      {/* Stats bar */}
       <StatsBar stats={stats} />
 
-      {/* ── Main content ── */}
+      {/* Main content */}
       <main className="main">
         {tab === 'live' && (
           <>
@@ -120,6 +139,7 @@ export function Dashboard({ token, onLogout }: Props) {
           <AlertSettings config={config} onSave={saveConfig} />
         )}
       </main>
+
     </div>
   )
 }
