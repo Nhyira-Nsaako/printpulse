@@ -28,7 +28,9 @@ export function FaultLog({ events, onAcknowledge, onExport, onFilterChange, filt
             <option value="MOTOR_FAULT">Motor Fault</option>
             <option value="THERMAL_RUNAWAY">Thermal Runaway</option>
           </select>
-          <button className="btn btn--sm btn--outline" onClick={onExport}>Export CSV</button>
+          <button className="btn btn--sm btn--outline" onClick={onExport}>
+            Export CSV
+          </button>
         </div>
       </div>
 
@@ -53,12 +55,18 @@ export function FaultLog({ events, onAcknowledge, onExport, onFilterChange, filt
             <tbody>
               {events.map(e => (
                 <tr key={e.id} className={e.acknowledged ? 'row--ack' : ''}>
-                  <td className="mono">#{e.id}</td>
+                  <td className="mono" style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                    #{e.id}
+                  </td>
                   <td>
-                    <span className="class-pill" style={{
-                      color: FAULT_COLORS[e.fault_class],
-                      borderColor: FAULT_COLORS[e.fault_class],
-                    }}>
+                    <span
+                      className="class-pill"
+                      style={{
+                        color: FAULT_COLORS[e.fault_class],
+                        borderColor: FAULT_COLORS[e.fault_class],
+                        background: `${FAULT_COLORS[e.fault_class]}14`,
+                      }}
+                    >
                       {FAULT_LABELS[e.fault_class]}
                     </span>
                   </td>
@@ -79,15 +87,28 @@ export function FaultLog({ events, onAcknowledge, onExport, onFilterChange, filt
                           className="input-sm"
                           placeholder="Notes…"
                           value={noteMap[e.id] ?? ''}
-                          onChange={ev => setNoteMap(p => ({ ...p, [e.id]: ev.target.value }))}
+                          onChange={ev =>
+                            setNoteMap(p => ({ ...p, [e.id]: ev.target.value }))
+                          }
                         />
                         <button
                           className="btn btn--xs btn--primary"
-                          onClick={() => { onAcknowledge(e.id, noteMap[e.id]); setNoteMap(p => { const n = { ...p }; delete n[e.id]; return n }) }}
-                        >Ack</button>
+                          onClick={() => {
+                            onAcknowledge(e.id, noteMap[e.id])
+                            setNoteMap(p => {
+                              const n = { ...p }
+                              delete n[e.id]
+                              return n
+                            })
+                          }}
+                        >
+                          Ack
+                        </button>
                       </div>
                     )}
-                    {e.notes && <div className="ack-note">{e.notes}</div>}
+                    {e.notes && (
+                      <div className="ack-note">{e.notes}</div>
+                    )}
                   </td>
                 </tr>
               ))}
