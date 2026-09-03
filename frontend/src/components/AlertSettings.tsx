@@ -18,33 +18,62 @@ export function AlertSettings({ config, onSave }: Props) {
 
   return (
     <div className="panel">
-      <div className="panel-header"><span className="panel-title">Alert Settings</span></div>
+      <div className="panel-header">
+        <span className="panel-title">Alert Settings</span>
+      </div>
+
       <div className="settings-grid">
         <label className="setting-row">
           <span>Nozzle Clog alerts</span>
-          <input type="checkbox" checked={local.nozzle_clog}
-            onChange={e => setLocal(p => ({ ...p, nozzle_clog: e.target.checked }))} />
+          <input
+            type="checkbox"
+            checked={local.nozzle_clog}
+            onChange={e => setLocal(p => ({ ...p, nozzle_clog: e.target.checked }))}
+            style={{ accentColor: 'var(--accent)', width: 16, height: 16, cursor: 'pointer' }}
+          />
         </label>
+
         <label className="setting-row">
           <span>Motor Fault alerts</span>
-          <input type="checkbox" checked={local.motor_fault}
-            onChange={e => setLocal(p => ({ ...p, motor_fault: e.target.checked }))} />
+          <input
+            type="checkbox"
+            checked={local.motor_fault}
+            onChange={e => setLocal(p => ({ ...p, motor_fault: e.target.checked }))}
+            style={{ accentColor: 'var(--accent)', width: 16, height: 16, cursor: 'pointer' }}
+          />
         </label>
+
         <label className="setting-row">
           <span>Thermal Runaway alerts</span>
-          <input type="checkbox" checked={local.thermal_runaway}
-            onChange={e => setLocal(p => ({ ...p, thermal_runaway: e.target.checked }))} />
+          <input
+            type="checkbox"
+            checked={local.thermal_runaway}
+            onChange={e => setLocal(p => ({ ...p, thermal_runaway: e.target.checked }))}
+            style={{ accentColor: 'var(--accent)', width: 16, height: 16, cursor: 'pointer' }}
+          />
         </label>
+
         <label className="setting-row">
           <span>Confidence threshold</span>
           <div className="slider-group">
-            <input type="range" min={0.5} max={1} step={0.05}
+            <input
+              type="range"
+              min={0.5}
+              max={1}
+              step={0.05}
               value={local.confidence_threshold}
-              onChange={e => setLocal(p => ({ ...p, confidence_threshold: parseFloat(e.target.value) }))} />
-            <span className="slider-val">{(local.confidence_threshold * 100).toFixed(0)}%</span>
+              onChange={e =>
+                setLocal(p => ({ ...p, confidence_threshold: parseFloat(e.target.value) }))
+              }
+              style={{ accentColor: 'var(--accent)', width: 140, cursor: 'pointer' }}
+            />
+            <span className="slider-val">
+              {(local.confidence_threshold * 100).toFixed(0)}%
+            </span>
           </div>
         </label>
       </div>
+
       <button className="btn btn--primary" onClick={handleSave}>
         {saved ? '✓ Saved' : 'Save Settings'}
       </button>
