@@ -10,9 +10,8 @@ from app.database import Base
 
 class FaultClass(str, enum.Enum):
     NORMAL = "NORMAL"
-    NOZZLE_CLOG = "NOZZLE_CLOG"
-    MOTOR_FAULT = "MOTOR_FAULT"
-    THERMAL_RUNAWAY = "THERMAL_RUNAWAY"
+    MECHANICAL_FAULT = "MECHANICAL_FAULT"
+    THERMAL_ANOMALY = "THERMAL_ANOMALY"
 
 
 class User(Base):
