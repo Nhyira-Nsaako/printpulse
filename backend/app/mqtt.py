@@ -27,6 +27,7 @@ _latest = {
     "fault_class": "NORMAL",
     "confidence": 0.0,
     "accel_rms_z": None,
+    "vibe_mag": None,
     "nozzle_temp": None,
     "bed_temp": None,
 }
@@ -46,6 +47,7 @@ async def _broadcast_live(event_id: Optional[int] = None):
         "fault_class": _latest["fault_class"],
         "confidence": _latest["confidence"],
         "accel_rms_z": _latest["accel_rms_z"],
+        "vibe_mag": _latest["vibe_mag"],
         "nozzle_temp": _latest["nozzle_temp"],
         "bed_temp": _latest["bed_temp"],
         "received_at": datetime.now(timezone.utc).isoformat(),
@@ -56,16 +58,21 @@ async def _broadcast_live(event_id: Optional[int] = None):
 async def _handle_vibration(payload: dict):
     """pulseprint/live — the ESP32 publishes two kinds of messages here:
     raw per-sample readings (vibe_x/vibe_y/vibe_z/vibe_mag, dominated by
-    gravity ~9.8) and, once per completed 100-sample window, the windowed
-    accel_rms_z feature (~0.03-0.1). We only care about the latter for the
-    dashboard — it's the same feature the ML model consumes, and its scale
-    is completely different from the raw magnitude, so mixing the two would
-    make the displayed number meaningless."""
-    value = _first(payload, "accel_rms_z", "head_rms")
-    if value is None:
-        return  # a raw vibe_x/y/z sample, not a windowed feature — ignore
-    _latest["accel_rms_z"] = value
-    await _broadcast_live()
+    gravity ~9.8, arriving at high frequency) and, once per completed
+    100-sample window, the windowed accel_rms_z feature (~0.03-0.1, arriving
+    much less often — that's the same feature the ML model consumes). We
+    track both separately since their scales aren't comparable, and
+    broadcast on every message so vibe_mag updates live on the dashboard."""
+    windowed = _first(payload, "accel_rms_z", "head_rms")
+    if windowed is not None:
+        _latest["accel_rms_z"] = windowed
+        await _broadcast_live()
+        return
+
+    raw = _first(payload, "vibe_mag")
+    if raw is not None:
+        _latest["vibe_mag"] = raw
+        await _broadcast_live()
 
 
 async def _handle_temperature(payload: dict):
