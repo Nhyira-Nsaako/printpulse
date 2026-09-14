@@ -60,9 +60,9 @@ export function LiveFeed({ reading, connected }: Props) {
 
           {/* Sensor readings */}
           <div className="sensor-grid">
-            <SensorCard label="Vibration RMS Z" value={reading.accel_rms_z} unit="g"  decimals={4} />
-            <SensorCard label="Nozzle Temp"     value={reading.nozzle_temp} unit="°C" decimals={1} />
-            <SensorCard label="Bed Temp"        value={reading.bed_temp}    unit="°C" decimals={1} />
+            <SensorCard label="Vibration"   value={reading.vibe_mag}    unit="m/s²" decimals={3} />
+            <SensorCard label="Nozzle Temp" value={reading.nozzle_temp} unit="°C"   decimals={1} />
+            <SensorCard label="Bed Temp"    value={reading.bed_temp}    unit="°C"   decimals={1} />
           </div>
 
           <div className="live-timestamp">
