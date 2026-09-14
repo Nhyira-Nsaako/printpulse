@@ -24,9 +24,8 @@ export function FaultLog({ events, onAcknowledge, onExport, onFilterChange, filt
             onChange={e => onFilterChange(e.target.value)}
           >
             <option value="ALL">All classes</option>
-            <option value="NOZZLE_CLOG">Nozzle Clog</option>
-            <option value="MOTOR_FAULT">Motor Fault</option>
-            <option value="THERMAL_RUNAWAY">Thermal Runaway</option>
+            <option value="MECHANICAL_FAULT">Mechanical Fault</option>
+            <option value="THERMAL_ANOMALY">Thermal Anomaly</option>
           </select>
           <button className="btn btn--sm btn--outline" onClick={onExport}>
             Export CSV
@@ -45,8 +44,8 @@ export function FaultLog({ events, onAcknowledge, onExport, onFilterChange, filt
                 <th>Class</th>
                 <th>Confidence</th>
                 <th>Vib RMS Z</th>
-                <th>Current</th>
-                <th>Temp</th>
+                <th>Nozzle Temp</th>
+                <th>Bed Temp</th>
                 <th>Received</th>
                 <th>Status</th>
                 <th>Action</th>
@@ -72,8 +71,8 @@ export function FaultLog({ events, onAcknowledge, onExport, onFilterChange, filt
                   </td>
                   <td className="mono">{formatConfidence(e.confidence)}</td>
                   <td className="mono">{e.accel_rms_z?.toFixed(4) ?? '—'}</td>
-                  <td className="mono">{e.current_rms?.toFixed(3) ?? '—'}</td>
-                  <td className="mono">{e.temperature?.toFixed(1) ?? '—'}</td>
+                  <td className="mono">{e.nozzle_temp?.toFixed(1) ?? '—'}</td>
+                  <td className="mono">{e.bed_temp?.toFixed(1) ?? '—'}</td>
                   <td className="timestamp">{formatDateTime(e.received_at)}</td>
                   <td>
                     <span className={`status-pill ${e.acknowledged ? 'status-pill--ack' : 'status-pill--open'}`}>
