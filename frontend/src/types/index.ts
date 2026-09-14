@@ -4,6 +4,7 @@ export interface LiveReading {
   fault_class: FaultClass
   confidence: number
   accel_rms_z: number | null
+  vibe_mag: number | null
   nozzle_temp: number | null
   bed_temp: number | null
   received_at: string
