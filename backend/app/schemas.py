@@ -103,9 +103,8 @@ class FaultStats(BaseModel):
     """Aggregated counts for the dashboard stats panel."""
     total_events: int
     normal_count: int
-    nozzle_clog_count: int
-    motor_fault_count: int
-    thermal_runaway_count: int
+    mechanical_fault_count: int
+    thermal_anomaly_count: int
     unacknowledged_faults: int
     last_24h_faults: int
 
