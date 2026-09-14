@@ -81,8 +81,8 @@ async def websocket_live(
             "fault_class": latest.fault_class.value,
             "confidence": latest.confidence,
             "accel_rms_z": latest.accel_rms_z,
-            "current_rms": latest.current_rms,
-            "temperature": latest.temperature,
+            "nozzle_temp": latest.nozzle_temp,
+            "bed_temp": latest.bed_temp,
             "received_at": latest.received_at.isoformat(),
             "event_id": latest.id,
         })
