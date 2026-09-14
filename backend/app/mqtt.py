@@ -20,15 +20,25 @@ logger = logging.getLogger(__name__)
 async def _handle_message(payload: dict, db: AsyncSession) -> FaultEvent:
     """Parse the MQTT payload, persist to DB, broadcast to WebSocket clients."""
 
+    # Accept either fault_class or predicted_label in incoming dictionary
+    if "predicted_label" in payload and "fault_class" not in payload:
+        payload["fault_class"] = str(payload.pop("predicted_label")).upper()
+    elif "fault_class" in payload and isinstance(payload["fault_class"], str):
+        payload["fault_class"] = payload["fault_class"].upper()
+
     data = MQTTPayload(**payload)
+
+    # Resolve temperature values based on payload attributes
+    nozzle_temp = getattr(data, "nozzle_temp", getattr(data, "temperature", 0.0))
+    bed_temp = getattr(data, "bed_temp", 0.0)
 
     event = FaultEvent(
         fault_class=data.fault_class,
         confidence=data.confidence,
-        accel_rms_z=data.accel_rms_z,
-        current_rms=data.current_rms,
-        temperature=data.temperature,
-        esp32_timestamp=data.timestamp,
+        accel_rms_z=getattr(data, "accel_rms_z", 0.0),
+        nozzle_temp=nozzle_temp,
+        bed_temp=bed_temp,
+        esp32_timestamp=getattr(data, "timestamp", None),
         received_at=datetime.now(timezone.utc),
     )
     db.add(event)
@@ -39,9 +49,9 @@ async def _handle_message(payload: dict, db: AsyncSession) -> FaultEvent:
         "type": "live_reading",
         "fault_class": event.fault_class.value,
         "confidence": event.confidence,
-        "accel_rms_z": event.accel_rms_z,
-        "current_rms": event.current_rms,
-        "temperature": event.temperature,
+        "accel_rms_z": getattr(event, "accel_rms_z", 0.0),
+        "nozzle_temp": getattr(event, "nozzle_temp", nozzle_temp),
+        "bed_temp": getattr(event, "bed_temp", bed_temp),
         "received_at": event.received_at.isoformat(),
         "event_id": event.id,
     })
