@@ -75,27 +75,11 @@ export function TrendCharts({ history }: Props) {
     }],
   }
 
-  const currentData = {
+  const nozzleTempData = {
     labels,
     datasets: [{
-      label: 'Current RMS (A)',
-      data: history.map(h => h.current_rms ?? null),
-      borderColor: '#8b5cf6',
-      backgroundColor: 'rgba(139,92,246,0.06)',
-      pointBackgroundColor: pointColors,
-      pointRadius: 3,
-      pointHoverRadius: 5,
-      borderWidth: 1.5,
-      fill: true,
-      tension: 0.3,
-    }],
-  }
-
-  const tempData = {
-    labels,
-    datasets: [{
-      label: 'Temperature (°C)',
-      data: history.map(h => h.temperature ?? null),
+      label: 'Nozzle Temp (°C)',
+      data: history.map(h => h.nozzle_temp ?? null),
       borderColor: '#ef4444',
       backgroundColor: 'rgba(239,68,68,0.06)',
       pointBackgroundColor: pointColors,
@@ -107,37 +91,44 @@ export function TrendCharts({ history }: Props) {
     }],
   }
 
+  const bedTempData = {
+    labels,
+    datasets: [{
+      label: 'Bed Temp (°C)',
+      data: history.map(h => h.bed_temp ?? null),
+      borderColor: '#f59e0b',
+      backgroundColor: 'rgba(245,158,11,0.06)',
+      pointBackgroundColor: pointColors,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      borderWidth: 1.5,
+      fill: true,
+      tension: 0.3,
+    }],
+  }
+
   if (history.length === 0) {
     return (
-      <div className="panel">
-        <div className="panel-header">
-          <span className="panel-title">Trend Charts</span>
-        </div>
-        <div className="empty-state">
-          No data yet — charts will populate as readings arrive.
-        </div>
+      <div>
+        <h3>Trend Charts</h3>
+        <p>No data yet — charts will populate as readings arrive.</p>
       </div>
     )
   }
 
   return (
-    <div className="panel">
-      <div className="panel-header">
-        <span className="panel-title">Trend Charts</span>
-        <span className="panel-sub">
-          {history.length} readings · coloured dots = fault class
-        </span>
+    <div>
+      <h3>Trend Charts</h3>
+      <p>{history.length} readings · coloured dots = fault class</p>
+
+      <div style={{ height: 200 }}>
+        <Line data={vibData} options={baseOpts('Vibration RMS Z (g)')} />
       </div>
-      <div className="chart-grid">
-        <div className="chart-wrap">
-          <Line data={vibData} options={baseOpts('Vibration RMS (Z-axis)')} />
-        </div>
-        <div className="chart-wrap">
-          <Line data={currentData} options={baseOpts('Current Draw (RMS)')} />
-        </div>
-        <div className="chart-wrap">
-          <Line data={tempData} options={baseOpts('Hotend Temperature')} />
-        </div>
+      <div style={{ height: 200 }}>
+        <Line data={nozzleTempData} options={baseOpts('Nozzle Temp (°C)')} />
+      </div>
+      <div style={{ height: 200 }}>
+        <Line data={bedTempData} options={baseOpts('Bed Temp (°C)')} />
       </div>
     </div>
   )
