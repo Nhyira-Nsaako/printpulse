@@ -51,8 +51,8 @@ class MQTTPayload(BaseModel):
     fault_class: FaultClass
     confidence: float = Field(ge=0.0, le=1.0)
     accel_rms_z: Optional[float] = None
-    current_rms: Optional[float] = None
-    temperature: Optional[float] = None
+    nozzle_temp: Optional[float] = None
+    bed_temp: Optional[float] = None
     timestamp: Optional[int] = None  # Unix ms from ESP32
 
 
@@ -63,8 +63,8 @@ class FaultEventOut(BaseModel):
     fault_class: FaultClass
     confidence: float
     accel_rms_z: Optional[float]
-    current_rms: Optional[float]
-    temperature: Optional[float]
+    nozzle_temp: Optional[float]
+    bed_temp: Optional[float]
     esp32_timestamp: Optional[int]
     received_at: datetime
     alert_sent: bool
@@ -94,8 +94,8 @@ class LiveReading(BaseModel):
     fault_class: FaultClass
     confidence: float
     accel_rms_z: Optional[float]
-    current_rms: Optional[float]
-    temperature: Optional[float]
+    nozzle_temp: Optional[float]
+    bed_temp: Optional[float]
     received_at: datetime
 
 
@@ -115,8 +115,8 @@ class TrendPoint(BaseModel):
     fault_class: FaultClass
     confidence: float
     accel_rms_z: Optional[float]
-    current_rms: Optional[float]
-    temperature: Optional[float]
+    nozzle_temp: Optional[float]
+    bed_temp: Optional[float]
 
 
 class TrendData(BaseModel):
