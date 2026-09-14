@@ -1,31 +1,27 @@
 import { FaultClass } from '../types'
 
-export const FAULT_LABELS: Record<FaultClass, string> = {
+export const FAULT_LABELS: Record = {
   NORMAL: 'Normal',
-  NOZZLE_CLOG: 'Nozzle Clog',
-  MOTOR_FAULT: 'Motor Fault',
-  THERMAL_RUNAWAY: 'Thermal Runaway',
+  MECHANICAL_FAULT: 'Mechanical Fault',
+  THERMAL_ANOMALY: 'Thermal Anomaly',
 }
 
-export const FAULT_COLORS: Record<FaultClass, string> = {
+export const FAULT_COLORS: Record = {
   NORMAL: '#27AE60',
-  NOZZLE_CLOG: '#F39C12',
-  MOTOR_FAULT: '#E67E22',
-  THERMAL_RUNAWAY: '#C0392B',
+  MECHANICAL_FAULT: '#E67E22',
+  THERMAL_ANOMALY: '#C0392B',
 }
 
-export const FAULT_BG: Record<FaultClass, string> = {
+export const FAULT_BG: Record = {
   NORMAL: '#EAFAF1',
-  NOZZLE_CLOG: '#FEF9E7',
-  MOTOR_FAULT: '#FEF0E7',
-  THERMAL_RUNAWAY: '#FDEDEC',
+  MECHANICAL_FAULT: '#FEF0E7',
+  THERMAL_ANOMALY: '#FDEDEC',
 }
 
-export const SEVERITY: Record<FaultClass, string> = {
+export const SEVERITY: Record = {
   NORMAL: 'None',
-  NOZZLE_CLOG: 'Medium',
-  MOTOR_FAULT: 'High',
-  THERMAL_RUNAWAY: 'Critical',
+  MECHANICAL_FAULT: 'High',
+  THERMAL_ANOMALY: 'Critical',
 }
 
 export function isFault(fc: FaultClass) {
