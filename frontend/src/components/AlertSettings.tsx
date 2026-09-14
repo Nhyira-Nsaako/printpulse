@@ -24,31 +24,21 @@ export function AlertSettings({ config, onSave }: Props) {
 
       <div className="settings-grid">
         <label className="setting-row">
-          <span>Nozzle Clog alerts</span>
+          <span>Mechanical Fault alerts</span>
           <input
             type="checkbox"
-            checked={local.nozzle_clog}
-            onChange={e => setLocal(p => ({ ...p, nozzle_clog: e.target.checked }))}
+            checked={local.mechanical_fault}
+            onChange={e => setLocal(p => ({ ...p, mechanical_fault: e.target.checked }))}
             style={{ accentColor: 'var(--accent)', width: 16, height: 16, cursor: 'pointer' }}
           />
         </label>
 
         <label className="setting-row">
-          <span>Motor Fault alerts</span>
+          <span>Thermal Anomaly alerts</span>
           <input
             type="checkbox"
-            checked={local.motor_fault}
-            onChange={e => setLocal(p => ({ ...p, motor_fault: e.target.checked }))}
-            style={{ accentColor: 'var(--accent)', width: 16, height: 16, cursor: 'pointer' }}
-          />
-        </label>
-
-        <label className="setting-row">
-          <span>Thermal Runaway alerts</span>
-          <input
-            type="checkbox"
-            checked={local.thermal_runaway}
-            onChange={e => setLocal(p => ({ ...p, thermal_runaway: e.target.checked }))}
+            checked={local.thermal_anomaly}
+            onChange={e => setLocal(p => ({ ...p, thermal_anomaly: e.target.checked }))}
             style={{ accentColor: 'var(--accent)', width: 16, height: 16, cursor: 'pointer' }}
           />
         </label>
@@ -80,7 +70,3 @@ export function AlertSettings({ config, onSave }: Props) {
     </div>
   )
 }
-
-
-
-
