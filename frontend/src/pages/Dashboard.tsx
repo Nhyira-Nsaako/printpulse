@@ -19,8 +19,8 @@ interface Props {
 type Tab = 'live' | 'log' | 'settings'
 
 const TAB_LABELS: Record<Tab, string> = {
-  live:     '⚡ Live',
-  log:      '📋 Fault Log',
+  live:     ' Live',
+  log:      ' Fault Log',
   settings: '⚙ Settings',
 }
 
