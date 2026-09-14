@@ -50,9 +50,9 @@ class FaultEvent(Base):
     )
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
 
-    accel_rms_z: Mapped[float] = mapped_column(Float, nullable=True)
-    current_rms: Mapped[float] = mapped_column(Float, nullable=True)
-    temperature: Mapped[float] = mapped_column(Float, nullable=True)
+    accel_rms_z: Mapped[float] = mapped_column(Float, nullable=False)
+    nozzle_temp: Mapped[float] = mapped_column(Float, nullable=False)
+    bed_temp: Mapped[float] = mapped_column(Float, nullable=False)
 
     esp32_timestamp: Mapped[int] = mapped_column(BigInteger, nullable=True)
     received_at: Mapped[datetime] = mapped_column(
