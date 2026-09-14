@@ -1,11 +1,11 @@
-export type FaultClass = 'NORMAL' | 'NOZZLE_CLOG' | 'MOTOR_FAULT' | 'THERMAL_RUNAWAY'
+export type FaultClass = 'NORMAL' | 'MECHANICAL_FAULT' | 'THERMAL_ANOMALY'
 
 export interface LiveReading {
   fault_class: FaultClass
   confidence: number
   accel_rms_z: number | null
-  current_rms: number | null
-  temperature: number | null
+  nozzle_temp: number | null
+  bed_temp: number | null
   received_at: string
   event_id?: number
 }
@@ -15,8 +15,8 @@ export interface FaultEvent {
   fault_class: FaultClass
   confidence: number
   accel_rms_z: number | null
-  current_rms: number | null
-  temperature: number | null
+  nozzle_temp: number | null
+  bed_temp: number | null
   esp32_timestamp: number | null
   received_at: string
   alert_sent: boolean
@@ -28,9 +28,8 @@ export interface FaultEvent {
 export interface FaultStats {
   total_events: number
   normal_count: number
-  nozzle_clog_count: number
-  motor_fault_count: number
-  thermal_runaway_count: number
+  mechanical_fault_count: number
+  thermal_anomaly_count: number
   unacknowledged_faults: number
   last_24h_faults: number
 }
@@ -40,8 +39,8 @@ export interface TrendPoint {
   fault_class: FaultClass
   confidence: number
   accel_rms_z: number | null
-  current_rms: number | null
-  temperature: number | null
+  nozzle_temp: number | null
+  bed_temp: number | null
 }
 
 export interface User {
@@ -56,8 +55,7 @@ export interface User {
 }
 
 export interface AlertConfig {
-  nozzle_clog: boolean
-  motor_fault: boolean
-  thermal_runaway: boolean
+  mechanical_fault: boolean
+  thermal_anomaly: boolean
   confidence_threshold: number
 }
