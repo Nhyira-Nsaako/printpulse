@@ -48,5 +48,15 @@ export function useAuth() {
     if (res.ok) setUser(await res.json())
   }, [token])
 
-  return { token, user, error, login, register, logout, fetchMe }
+  const updateProfile = useCallback(async (patch: Partial<Pick<User, 'alert_email' | 'alert_phone' | 'email_alerts_enabled' | 'sms_alerts_enabled'>>) => {
+    if (!token) return
+    const res = await fetch(`${API}/auth/me`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(patch),
+    })
+    if (res.ok) setUser(await res.json())
+  }, [token])
+
+  return { token, user, error, login, register, logout, fetchMe, updateProfile }
 }
