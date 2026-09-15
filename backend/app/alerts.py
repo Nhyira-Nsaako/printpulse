@@ -11,7 +11,6 @@ from app.models import User, FaultEvent, FaultClass
 
 logger = logging.getLogger(__name__)
 
-# Severity labels used in alert messages
 SEVERITY = {
     FaultClass.NORMAL: "Info",
     FaultClass.MECHANICAL_FAULT: "High",
@@ -99,20 +98,18 @@ async def send_sms_alert(to_phone: str, event: FaultEvent) -> bool:
 async def dispatch_alerts(event: FaultEvent, db: AsyncSession) -> None:
     """
     Check whether this event should trigger alerts, then send to all
-    users who have alerts enabled.
+    active users, respecting each user's independent email/SMS toggle.
     """
     if event.fault_class.value not in settings.alert_fault_classes_list:
         return
     if event.confidence < settings.ALERT_CONFIDENCE_THRESHOLD:
         return
 
-    result = await db.execute(
-        select(User).where(User.is_active == True, User.alerts_enabled == True)
-    )
+    result = await db.execute(select(User).where(User.is_active == True))
     users = result.scalars().all()
 
     for user in users:
-        if user.alert_email:
+        if user.email_alerts_enabled and user.alert_email:
             await send_email_alert(user.alert_email, event)
-        if user.alert_phone:
+        if user.sms_alerts_enabled and user.alert_phone:
             await send_sms_alert(user.alert_phone, event)
