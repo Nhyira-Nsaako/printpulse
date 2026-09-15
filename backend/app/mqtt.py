@@ -1,241 +1,535 @@
-# app/routers/dashboard.py
+# app/mqtt.py
 
+import asyncio
+import json
 import logging
+from datetime import datetime, timezone
+from typing import Any
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    Query,
-    WebSocket,
-    WebSocketDisconnect,
-)
-
+import paho.mqtt.client as mqtt
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import get_current_user
 from app.config import settings
-from app.database import get_db
-from app.models import FaultEvent, User
-from app.schemas import LiveReading
+from app.database import AsyncSessionLocal
+from app.models import FaultEvent
 from app.websocket import manager
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/dashboard",
-    tags=["Dashboard"],
-)
+
+# ============================================================
+# LATEST SENSOR / ML DATA
+# ============================================================
+
+latest_vibration: dict[str, Any] = {}
+latest_printer: dict[str, Any] = {}
+latest_status: dict[str, Any] = {}
 
 
 # ============================================================
-# GET LATEST READING
+# BUILD LIVE READING
 # ============================================================
 
-@router.get(
-    "/live",
-    response_model=LiveReading,
-)
-async def get_latest_reading(
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
-):
+def build_live_reading() -> dict[str, Any]:
+    """
+    Combine the latest vibration, printer and ML data
+    into the format expected by the frontend.
+    """
 
-    query = (
-        select(FaultEvent)
-        .order_by(
-            FaultEvent.received_at.desc()
-        )
-        .limit(1)
-    )
+    vibration = latest_vibration or {}
+    printer = latest_printer or {}
+    status = latest_status or {}
 
-    event = (
-        await db.execute(query)
-    ).scalar_one_or_none()
+    return {
+        "type": "live_reading",
 
-    if not event:
-        raise HTTPException(
-            status_code=404,
-            detail="No readings yet.",
-        )
+        # ML classification
+        "fault_class": status.get("fault_class", "NORMAL"),
+        "confidence": status.get("confidence", 0.0),
 
-    return LiveReading(
-        fault_class=event.fault_class,
-        confidence=event.confidence,
-        accel_rms_z=event.accel_rms_z,
-        vibe_mag=None,
-        nozzle_temp=event.nozzle_temp,
-        bed_temp=event.bed_temp,
-        received_at=event.received_at,
-        event_id=event.id,
-    )
+        # Vibration
+        "accel_rms_z": vibration.get("vibe_z"),
+        "vibe_mag": vibration.get("vibe_mag"),
+
+        # Printer temperatures
+        "nozzle_temp": printer.get("nozzle_temp"),
+        "bed_temp": printer.get("bed_temp"),
+
+        # Server timestamp
+        "received_at": datetime.now(timezone.utc).isoformat(),
+
+        # Optional database event ID
+        "event_id": status.get("event_id"),
+    }
 
 
 # ============================================================
-# LIVE WEBSOCKET
+# BROADCAST TO DASHBOARD
 # ============================================================
 
-@router.websocket(
-    "/ws/live"
-)
-async def websocket_live(
-    ws: WebSocket,
-    token: str = Query(
-        ...,
-        description="JWT access token passed as query param",
-    ),
-    db: AsyncSession = Depends(get_db),
-):
+async def broadcast_live_reading() -> None:
+    """
+    Send the latest combined sensor/ML reading
+    to every connected dashboard WebSocket.
+    """
 
-    from jose import JWTError, jwt
-    from app.auth import get_user_by_username
-
-    # --------------------------------------------------------
-    # Authenticate JWT
-    # --------------------------------------------------------
-
-    try:
-
-        payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
+    if manager.client_count == 0:
+        logger.debug(
+            "No WebSocket clients connected. "
+            "Live reading will not be broadcast."
         )
-
-        username = payload.get(
-            "sub"
-        )
-
-        if not username:
-            await ws.close(
-                code=4001
-            )
-            return
-
-        user = await get_user_by_username(
-            db,
-            username,
-        )
-
-        if not user or not user.is_active:
-            await ws.close(
-                code=4001
-            )
-            return
-
-    except JWTError:
-
-        logger.warning(
-            "WebSocket authentication failed."
-        )
-
-        await ws.close(
-            code=4001
-        )
-
         return
 
-    except Exception:
-
-        logger.exception(
-            "Unexpected WebSocket authentication error."
-        )
-
-        await ws.close(
-            code=4001
-        )
-
-        return
-
-    # --------------------------------------------------------
-    # Connect WebSocket
-    # --------------------------------------------------------
-
-    await manager.connect(
-        ws,
-        user_id=user.id,
-    )
+    reading = build_live_reading()
 
     logger.info(
-        "WebSocket connected for user %s",
-        user.id,
+        "Broadcasting live reading to %s clients: %s",
+        manager.client_count,
+        reading,
+    )
+
+    await manager.broadcast(reading)
+
+
+# ============================================================
+# MQTT CONNECT
+# ============================================================
+
+def on_connect(
+    client: mqtt.Client,
+    userdata: Any,
+    flags: dict,
+    reason_code: Any,
+    properties: Any = None,
+) -> None:
+    """
+    Called when the MQTT client connects to HiveMQ.
+    """
+
+    logger.info(
+        "Connected to MQTT broker | reason_code=%s",
+        reason_code,
+    )
+
+    if reason_code != 0:
+        logger.error(
+            "MQTT connection failed | reason_code=%s",
+            reason_code,
+        )
+        return
+
+    topics = [
+        settings.MQTT_TOPIC_VIBRATION,
+        settings.MQTT_TOPIC_TEMPERATURE,
+        settings.MQTT_TOPIC_STATUS,
+    ]
+
+    for topic in topics:
+        result, _ = client.subscribe(topic)
+
+        if result == mqtt.MQTT_ERR_SUCCESS:
+            logger.info(
+                "Subscribed to MQTT topic: %s",
+                topic,
+            )
+        else:
+            logger.error(
+                "Failed to subscribe to MQTT topic: %s | result=%s",
+                topic,
+                result,
+            )
+
+
+# ============================================================
+# MQTT DISCONNECT
+# ============================================================
+
+def on_disconnect(
+    client: mqtt.Client,
+    userdata: Any,
+    disconnect_flags: Any,
+    reason_code: Any,
+    properties: Any = None,
+) -> None:
+    """
+    Called when the MQTT client disconnects.
+    """
+
+    logger.warning(
+        "Disconnected from MQTT broker | reason_code=%s",
+        reason_code,
+    )
+
+
+# ============================================================
+# MQTT MESSAGE RECEIVED
+# ============================================================
+
+def on_message(
+    client: mqtt.Client,
+    userdata: Any,
+    msg: mqtt.MQTTMessage,
+) -> None:
+    """
+    Called whenever a subscribed MQTT message arrives.
+    """
+
+    global latest_vibration
+    global latest_printer
+    global latest_status
+
+    try:
+        payload = json.loads(msg.payload.decode("utf-8"))
+
+        logger.info(
+            "MQTT message received | topic=%s | payload=%s",
+            msg.topic,
+            payload,
+        )
+
+    except json.JSONDecodeError:
+        logger.exception(
+            "Invalid JSON received from MQTT topic %s",
+            msg.topic,
+        )
+        return
+
+    except Exception:
+        logger.exception(
+            "Failed to decode MQTT message from topic %s",
+            msg.topic,
+        )
+        return
+
+    # --------------------------------------------------------
+    # VIBRATION
+    # --------------------------------------------------------
+
+    if msg.topic == settings.MQTT_TOPIC_VIBRATION:
+        latest_vibration = {
+            "vibe_x": payload.get("vibe_x"),
+            "vibe_y": payload.get("vibe_y"),
+            "vibe_z": payload.get("vibe_z"),
+            "vibe_mag": payload.get("vibe_mag"),
+        }
+
+        logger.info(
+            "Updated vibration data: %s",
+            latest_vibration,
+        )
+
+        # IMPORTANT:
+        # Broadcast immediately.
+        # We do NOT wait for printpulse/status.
+        asyncio.create_task(
+            broadcast_live_reading()
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # PRINTER TEMPERATURE
+    # --------------------------------------------------------
+
+    if msg.topic == settings.MQTT_TOPIC_TEMPERATURE:
+        latest_printer = {
+            "nozzle_temp": payload.get("nozzle_actual"),
+            "nozzle_target": payload.get("nozzle_target"),
+            "bed_temp": payload.get("bed_actual"),
+            "bed_target": payload.get("bed_target"),
+            "timestamp": payload.get("timestamp"),
+        }
+
+        logger.info(
+            "Updated printer data: %s",
+            latest_printer,
+        )
+
+        # IMPORTANT:
+        # Broadcast immediately.
+        # We do NOT wait for printpulse/status.
+        asyncio.create_task(
+            broadcast_live_reading()
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # ML STATUS
+    # --------------------------------------------------------
+
+    if msg.topic == settings.MQTT_TOPIC_STATUS:
+        latest_status = {
+            "fault_class": payload.get(
+                "fault_class",
+                "NORMAL",
+            ),
+            "confidence": payload.get(
+                "confidence",
+                0.0,
+            ),
+        }
+
+        logger.info(
+            "Updated ML status: %s",
+            latest_status,
+        )
+
+        # Save the fault event to PostgreSQL.
+        asyncio.create_task(
+            save_fault_event(payload)
+        )
+
+        # Also immediately update the dashboard.
+        asyncio.create_task(
+            broadcast_live_reading()
+        )
+
+        return
+
+    logger.warning(
+        "Received message from unexpected topic: %s",
+        msg.topic,
+    )
+
+
+# ============================================================
+# SAVE FAULT EVENT
+# ============================================================
+
+async def save_fault_event(
+    payload: dict[str, Any],
+) -> None:
+    """
+    Save an ML classification to PostgreSQL.
+
+    This only runs when a message is received on
+    printpulse/status.
+    """
+
+    try:
+        fault_class = payload.get(
+            "fault_class",
+            "NORMAL",
+        )
+
+        confidence = float(
+            payload.get(
+                "confidence",
+                0.0,
+            )
+        )
+
+        # ----------------------------------------------------
+        # Vibration
+        # ----------------------------------------------------
+
+        accel_rms_z = latest_vibration.get(
+            "vibe_z"
+        )
+
+        if accel_rms_z is None:
+            accel_rms_z = 0.0
+
+        accel_rms_z = float(accel_rms_z)
+
+        # ----------------------------------------------------
+        # Printer temperatures
+        # ----------------------------------------------------
+
+        nozzle_temp = latest_printer.get(
+            "nozzle_temp"
+        )
+
+        bed_temp = latest_printer.get(
+            "bed_temp"
+        )
+
+        if nozzle_temp is None:
+            nozzle_temp = 0.0
+
+        if bed_temp is None:
+            bed_temp = 0.0
+
+        nozzle_temp = float(nozzle_temp)
+        bed_temp = float(bed_temp)
+
+        # ----------------------------------------------------
+        # ESP32 timestamp
+        #
+        # The current printer payload contains a STRING
+        # timestamp, while your database field is BigInteger.
+        #
+        # Therefore we only use a numeric timestamp if the
+        # status payload actually provides one.
+        # ----------------------------------------------------
+
+        esp32_timestamp = payload.get(
+            "timestamp"
+        )
+
+        if not isinstance(
+            esp32_timestamp,
+            int,
+        ):
+            esp32_timestamp = None
+
+        # ----------------------------------------------------
+        # Create database event
+        # ----------------------------------------------------
+
+        async with AsyncSessionLocal() as db:
+
+            event = FaultEvent(
+                fault_class=fault_class,
+                confidence=confidence,
+                accel_rms_z=accel_rms_z,
+                nozzle_temp=nozzle_temp,
+                bed_temp=bed_temp,
+                esp32_timestamp=esp32_timestamp,
+                received_at=datetime.now(
+                    timezone.utc
+                ),
+                alert_sent=False,
+                acknowledged=False,
+            )
+
+            db.add(event)
+
+            await db.commit()
+
+            await db.refresh(event)
+
+            logger.info(
+                "Fault event saved | id=%s | class=%s | confidence=%.3f",
+                event.id,
+                fault_class,
+                confidence,
+            )
+
+            # Store the generated database ID so the
+            # WebSocket message can include it.
+            latest_status["event_id"] = event.id
+
+    except Exception:
+        logger.exception(
+            "Failed to save fault event"
+        )
+
+
+# ============================================================
+# MQTT LISTENER
+# ============================================================
+
+async def mqtt_listener() -> None:
+    """
+    Start the MQTT client and keep it connected.
+
+    This runs as a background asyncio task from FastAPI's
+    lifespan.
+    """
+
+    logger.info(
+        "Starting MQTT listener..."
+    )
+
+    client = mqtt.Client(
+        mqtt.CallbackAPIVersion.VERSION2,
+        client_id="printpulse-backend",
     )
 
     # --------------------------------------------------------
-    # Send latest DATABASE event when connecting
-    #
-    # This is only the historical/latest ML event.
-    # Live MQTT readings will come through manager.broadcast().
+    # Authentication
+    # --------------------------------------------------------
+
+    client.username_pw_set(
+        settings.MQTT_USERNAME,
+        settings.MQTT_PASSWORD,
+    )
+
+    # --------------------------------------------------------
+    # HiveMQ Cloud uses TLS on port 8883
+    # --------------------------------------------------------
+
+    if settings.MQTT_PORT == 8883:
+        client.tls_set()
+
+    # --------------------------------------------------------
+    # Callbacks
+    # --------------------------------------------------------
+
+    client.on_connect = on_connect
+    client.on_disconnect = on_disconnect
+    client.on_message = on_message
+
+    # --------------------------------------------------------
+    # Connect
     # --------------------------------------------------------
 
     try:
-
-        query = (
-            select(FaultEvent)
-            .order_by(
-                FaultEvent.received_at.desc()
-            )
-            .limit(1)
+        logger.info(
+            "Connecting to MQTT broker %s:%s...",
+            settings.MQTT_BROKER,
+            settings.MQTT_PORT,
         )
 
-        latest = (
-            await db.execute(query)
-        ).scalar_one_or_none()
+        client.connect(
+            settings.MQTT_BROKER,
+            settings.MQTT_PORT,
+            keepalive=60,
+        )
 
-        if latest:
-
-            await manager.send_to(
-                ws,
-                {
-                    "type": "live_reading",
-                    "fault_class": latest.fault_class.value,
-                    "confidence": latest.confidence,
-                    "accel_rms_z": latest.accel_rms_z,
-                    "vibe_mag": None,
-                    "nozzle_temp": latest.nozzle_temp,
-                    "bed_temp": latest.bed_temp,
-                    "received_at": latest.received_at.isoformat(),
-                    "event_id": latest.id,
-                },
-            )
+        logger.info(
+            "MQTT client connected successfully."
+        )
 
     except Exception:
-
         logger.exception(
-            "Failed to send latest reading to WebSocket."
+            "Failed to connect to MQTT broker."
         )
+        return
 
     # --------------------------------------------------------
-    # Keep connection alive
+    # Run MQTT network loop
+    #
+    # loop() is used instead of loop_forever() because
+    # loop_forever() would block FastAPI's asyncio event loop.
     # --------------------------------------------------------
 
     try:
 
         while True:
 
-            message = await ws.receive_text()
-
-            logger.debug(
-                "WS message from user %s: %s",
-                user.id,
-                message,
+            client.loop(
+                timeout=1.0
             )
 
-    except WebSocketDisconnect:
+            await asyncio.sleep(0.01)
 
-        manager.disconnect(ws)
+    except asyncio.CancelledError:
 
         logger.info(
-            "WS disconnected for user %s",
-            user.id,
+            "MQTT listener cancelled."
         )
+
+        try:
+            client.disconnect()
+        except Exception:
+            logger.exception(
+                "Error while disconnecting MQTT client."
+            )
+
+        raise
 
     except Exception:
 
-        manager.disconnect(ws)
-
         logger.exception(
-            "Unexpected WebSocket error for user %s",
-            user.id,
+            "MQTT listener stopped unexpectedly."
         )
+
+        try:
+            client.disconnect()
+        except Exception:
+            logger.exception(
+                "Error while disconnecting MQTT client."
+            )
