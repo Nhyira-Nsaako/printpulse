@@ -40,11 +40,11 @@ class Settings(BaseSettings):
     # MQTT
     MQTT_BROKER: str = "localhost"
     MQTT_PORT: int = 1883
-    MQTT_TOPIC_VIBRATION: str = "pulseprint/live"
+    MQTT_TOPIC_VIBRATION: str = "printpulse/live"
     MQTT_TOPIC_TEMPERATURE: str = "printpulse/printer"
     MQTT_TOPIC_STATUS: str = "printpulse/status"
-    MQTT_USERNAME: str = ""
-    MQTT_PASSWORD: str = ""
+    MQTT_USERNAME: str = "PrintPulse"
+    MQTT_PASSWORD: str = "FinalYearProject@2026"
 
     # Email (SMTP)
     SMTP_HOST: str = "smtp.gmail.com"
