@@ -2,16 +2,14 @@ import { useRef, useCallback, useState } from 'react'
 import { LiveReading, AlertConfig, FaultClass } from '../types'
 
 const DEFAULT_CONFIG: AlertConfig = {
-  nozzle_clog: true,
-  motor_fault: true,
-  thermal_runaway: true,
+  mechanical_fault: true,
+  thermal_anomaly: true,
   confidence_threshold: 0.85,
 }
 
 const ALERT_CLASSES: Record<keyof Omit<AlertConfig, 'confidence_threshold'>, FaultClass> = {
-  nozzle_clog: 'NOZZLE_CLOG',
-  motor_fault: 'MOTOR_FAULT',
-  thermal_runaway: 'THERMAL_RUNAWAY',
+  mechanical_fault: 'MECHANICAL_FAULT',
+  thermal_anomaly: 'THERMAL_ANOMALY',
 }
 
 export function useAlerts() {
@@ -49,9 +47,9 @@ export function useAlerts() {
 
     setAlertActive(true)
     // Tone frequency by severity
-    const freq = fc === 'THERMAL_RUNAWAY' ? 880 : fc === 'MOTOR_FAULT' ? 660 : 440
+    const freq = fc === 'THERMAL_ANOMALY' ? 880 : 660
     playTone(freq)
-    if (fc === 'THERMAL_RUNAWAY') setTimeout(() => playTone(freq), 400)
+    if (fc === 'THERMAL_ANOMALY') setTimeout(() => playTone(freq), 400)
   }, [config, playTone])
 
   const dismissAlert = useCallback(() => setAlertActive(false), [])
