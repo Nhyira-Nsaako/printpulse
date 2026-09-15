@@ -1,32 +1,42 @@
 import React from 'react'
 import { LiveReading } from '../types'
-import { FAULT_LABELS, FAULT_COLORS, formatConfidence } from '../utils/faultUtils'
+import { FAULT_LABELS, formatConfidence } from '../utils/faultUtils'
+
+const FAULT_NOTES: Record<string, string> = {
+  MECHANICAL_FAULT: 'Predictive wear signature on vibration channel. Inspect belt/bearing path.',
+  THERMAL_ANOMALY: 'Temperature deviation exceeds nominal profile. Check heater and thermistor wiring.',
+}
+
+const BANNER_BG: Record<string, string> = {
+  MECHANICAL_FAULT: '#E7DAB8',
+  THERMAL_ANOMALY: '#F6D8D4',
+}
+const BANNER_TEXT: Record<string, string> = {
+  MECHANICAL_FAULT: '#7A5A18',
+  THERMAL_ANOMALY: '#8C2A20',
+}
 
 interface Props {
   active: boolean
   reading: LiveReading | null
+  threshold: number
   onDismiss: () => void
 }
 
-export function AlertBanner({ active, reading, onDismiss }: Props) {
-  if (!active || !reading) return null
+export function AlertBanner({ active, reading, threshold }: Props) {
+  if (!active || !reading || reading.fault_class === 'NORMAL') return null
 
-  const color = FAULT_COLORS[reading.fault_class]
+  const bg = BANNER_BG[reading.fault_class]
+  const text = BANNER_TEXT[reading.fault_class]
 
   return (
-    <div
-      className="alert-banner"
-      style={{ borderColor: color, background: `${color}14` }}
-    >
-      <div className="alert-banner__icon" style={{ color }}>⚠</div>
-      <div className="alert-banner__body">
-        <strong style={{ color }}>{FAULT_LABELS[reading.fault_class]} Detected</strong>
-        <span style={{ color: 'var(--text-secondary)' }}>
-          {' '}— {formatConfidence(reading.confidence)} confidence.
-          Inspect your printer immediately.
-        </span>
+    <div className="alert-banner" style={{ background: bg }}>
+      <div className="alert-banner__headline" style={{ color: text }}>
+        Active fault · {FAULT_LABELS[reading.fault_class]} · confidence {formatConfidence(reading.confidence)} (threshold {Math.round(threshold * 100)}%)
       </div>
-      <button className="alert-banner__dismiss" onClick={onDismiss}>✕</button>
+      <div className="alert-banner__note" style={{ color: text }}>
+        {FAULT_NOTES[reading.fault_class]}
+      </div>
     </div>
   )
 }
