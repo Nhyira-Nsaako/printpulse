@@ -2,7 +2,6 @@
 # Railway/Render/Heroku Postgres addons inject this as postgres:// or
 # postgresql://, which app/config.py automatically rewrites to the asyncpg
 # scheme — you don't need to edit their auto-generated value.
-DATABASE_URL=postgresql+asyncpg://printpulse:password@localhost:5432/printpulse_db
 
 # ── CORS ────────────────────────────────────────────────
 # Comma-separated list of allowed frontend origins. In production, set this
