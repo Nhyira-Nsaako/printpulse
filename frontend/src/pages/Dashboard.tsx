@@ -8,18 +8,20 @@ import { AlertSettings } from '../components/AlertSettings'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useApi } from '../hooks/useApi'
 import { useAlerts } from '../hooks/useAlerts'
-import { FaultEvent, FaultStats } from '../types'
+import { FaultEvent, FaultStats, User } from '../types'
 
 interface Props {
   token: string
+  user: User | null
   onLogout: () => void
+  onUpdateProfile: (patch: Partial<Pick<User, 'alert_email' | 'alert_phone' | 'email_alerts_enabled' | 'sms_alerts_enabled'>>) => void
 }
 
 type Tab = 'live' | 'log' | 'settings'
 
 const CALLSIGN = 'PRN-04 · FDM CELL A'
 
-export function Dashboard({ token, onLogout }: Props) {
+export function Dashboard({ token, user, onLogout, onUpdateProfile }: Props) {
   const { latest, history, connected } = useWebSocket(token)
   const { fetchStats, fetchFaults, acknowledgeFault, exportCSV } = useApi(token)
   const { config, saveConfig, alertActive, checkAndAlert, dismissAlert } = useAlerts()
@@ -127,7 +129,12 @@ export function Dashboard({ token, onLogout }: Props) {
           />
         )}
         {tab === 'settings' && (
-          <AlertSettings config={config} onSave={saveConfig} />
+          <AlertSettings
+            user={user}
+            onUpdateProfile={onUpdateProfile}
+            config={config}
+            onSaveConfig={saveConfig}
+          />
         )}
       </main>
     </div>
