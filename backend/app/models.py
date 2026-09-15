@@ -29,7 +29,8 @@ class User(Base):
 
     alert_email: Mapped[str] = mapped_column(String(255), nullable=True)
     alert_phone: Mapped[str] = mapped_column(String(30), nullable=True)
-    alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    email_alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    sms_alerts_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
     fault_events = relationship("FaultEvent", back_populates="acknowledged_by_user")
 
