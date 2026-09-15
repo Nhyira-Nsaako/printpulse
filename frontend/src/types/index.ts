@@ -52,7 +52,8 @@ export interface User {
   created_at: string
   alert_email: string | null
   alert_phone: string | null
-  alerts_enabled: boolean
+  email_alerts_enabled: boolean
+  sms_alerts_enabled: boolean
 }
 
 export interface AlertConfig {
