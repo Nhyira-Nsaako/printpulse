@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -5,8 +6,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.database import engine, Base
+from app.database import engine
+from app.mqtt import mqtt_listener
 from app.routers import auth, faults, dashboard
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,20 +21,32 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── Startup ──────────────────────────────────────────────────────────────
+    # -------------------------------------------------------------------------
+    # STARTUP
+    # -------------------------------------------------------------------------
+
     logger.info("Application starting...")
 
-    logger.info("Creating database tables (if not exist)...")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    logger.info("Database startup complete.")
+    logger.info("Starting MQTT listener...")
+    mqtt_task = asyncio.create_task(mqtt_listener())
 
     yield
 
-    # ── Shutdown ─────────────────────────────────────────────────────────────
-    logger.info("Application shutting down...")
+    # -------------------------------------------------------------------------
+    # SHUTDOWN
+    # -------------------------------------------------------------------------
+
+    logger.info("Shutting down MQTT listener...")
+
+    mqtt_task.cancel()
+
+    try:
+        await mqtt_task
+    except asyncio.CancelledError:
+        logger.info("MQTT listener cancelled.")
+
     await engine.dispose()
+
     logger.info("Shutdown complete.")
 
 
@@ -42,7 +57,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ── CORS ─────────────────────────────────────────────────────────────────────
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -51,13 +66,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ───────────────────────────────────────────────────────────────────
+
 app.include_router(auth.router)
 app.include_router(faults.router)
 app.include_router(dashboard.router)
 
 
-# ── Health Checks ─────────────────────────────────────────────────────────────
 @app.get("/", tags=["Health"])
 async def root():
     return {
