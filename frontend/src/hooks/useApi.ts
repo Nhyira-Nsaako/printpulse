@@ -47,10 +47,10 @@ export function useApi(token: string | null) {
     const data = await res.json()
     const events: FaultEvent[] = data.items
     const rows = [
-      ['ID', 'Fault Class', 'Confidence', 'Vibration RMS Z', 'Current RMS', 'Temperature', 'Received At', 'Acknowledged'],
+      ['ID', 'Fault Class', 'Confidence', 'Vibration RMS Z', 'Nozzle Temp', 'Bed Temp', 'Received At', 'Acknowledged'],
       ...events.map(e => [
         e.id, e.fault_class, (e.confidence * 100).toFixed(1) + '%',
-        e.accel_rms_z ?? '', e.current_rms ?? '', e.temperature ?? '',
+        e.accel_rms_z ?? '', e.nozzle_temp ?? '', e.bed_temp ?? '',
         e.received_at, e.acknowledged ? 'Yes' : 'No',
       ])
     ]
