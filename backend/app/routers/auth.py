@@ -16,12 +16,10 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/register", response_model=UserOut, status_code=201)
 async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
-    # Check email uniqueness
     result = await db.execute(select(User).where(User.email == data.email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered.")
 
-    # Check username uniqueness
     result = await db.execute(select(User).where(User.username == data.username))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Username already taken.")
@@ -68,8 +66,10 @@ async def update_me(
         current_user.alert_email = data.alert_email
     if data.alert_phone is not None:
         current_user.alert_phone = data.alert_phone
-    if data.alerts_enabled is not None:
-        current_user.alerts_enabled = data.alerts_enabled
+    if data.email_alerts_enabled is not None:
+        current_user.email_alerts_enabled = data.email_alerts_enabled
+    if data.sms_alerts_enabled is not None:
+        current_user.sms_alerts_enabled = data.sms_alerts_enabled
     db.add(current_user)
     await db.commit()
     await db.refresh(current_user)
