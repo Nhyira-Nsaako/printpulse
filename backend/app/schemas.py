@@ -25,7 +25,8 @@ class UserOut(BaseModel):
     created_at: datetime
     alert_email: Optional[str] = None
     alert_phone: Optional[str] = None
-    alerts_enabled: bool
+    email_alerts_enabled: bool
+    sms_alerts_enabled: bool
 
     model_config = {"from_attributes": True}
 
@@ -33,7 +34,8 @@ class UserOut(BaseModel):
 class UserUpdate(BaseModel):
     alert_email: Optional[EmailStr] = None
     alert_phone: Optional[str] = None
-    alerts_enabled: Optional[bool] = None
+    email_alerts_enabled: Optional[bool] = None
+    sms_alerts_enabled: Optional[bool] = None
 
 
 class Token(BaseModel):
