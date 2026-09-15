@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.database import engine, Base
 from app.routers import auth, faults, dashboard
 
 logging.basicConfig(
@@ -17,9 +18,21 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ── Startup ──────────────────────────────────────────────────────────────
     logger.info("Application starting...")
+
+    logger.info("Creating database tables (if not exist)...")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    logger.info("Database startup complete.")
+
     yield
+
+    # ── Shutdown ─────────────────────────────────────────────────────────────
     logger.info("Application shutting down...")
+    await engine.dispose()
+    logger.info("Shutdown complete.")
 
 
 app = FastAPI(
@@ -29,6 +42,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ── CORS ─────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -37,16 +51,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth.router)
 app.include_router(faults.router)
 app.include_router(dashboard.router)
 
 
+# ── Health Checks ─────────────────────────────────────────────────────────────
 @app.get("/", tags=["Health"])
 async def root():
-    return {"status": "ok", "service": "PrintPulse API"}
+    return {
+        "status": "ok",
+        "service": "PrintPulse API",
+    }
 
 
 @app.get("/health", tags=["Health"])
 async def health():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+    }
