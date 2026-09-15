@@ -89,7 +89,7 @@ function SensorCard({ label, value, unit, decimals }: {
     <div className="sensor-card">
       <div className="sensor-card__label">{label}</div>
       <div className="sensor-card__value">
-        {value !== null ? value.toFixed(decimals) : '—'}
+        {value != null ? value.toFixed(decimals) : '—'}
         <span className="sensor-card__unit"> {unit}</span>
       </div>
     </div>
