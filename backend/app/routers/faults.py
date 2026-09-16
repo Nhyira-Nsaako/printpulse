@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, delete
+from sqlalchemy import select, func, and_
 
 from app.database import get_db
 from app.models import FaultEvent, FaultClass, User
@@ -221,19 +221,4 @@ async def acknowledge_fault(
     return event
 
 
-@router.delete("/clear-all")
-async def clear_all_faults(
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
-):
-    """Delete all fault events while keeping users and tables."""
-    result = await db.execute(
-        delete(FaultEvent)
-    )
 
-    await db.commit()
-
-    return {
-        "message": "All fault events cleared.",
-        "deleted": result.rowcount,
-    }
