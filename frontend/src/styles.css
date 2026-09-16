@@ -61,7 +61,7 @@ body {
   padding: 6px 24px 14px;
 }
 .header-left { display: flex; align-items: baseline; gap: 10px; }
-.header-title { font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
+.header-title { font-size: 26px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em; }
 .header-sub {
   font-size: 11px; color: var(--text-muted); text-transform: uppercase;
   letter-spacing: 0.1em; font-family: var(--font-mono);
