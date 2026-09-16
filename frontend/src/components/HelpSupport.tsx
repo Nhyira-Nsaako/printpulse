@@ -71,7 +71,7 @@ export function HelpSupport() {
               <Mail size={15} />
               <div>
                 <div className="setting-row__title">Email</div>
-                <div className="setting-row__desc">support@printpulse.example</div>
+                <div className="setting-row__desc">support@printpulse.com</div>
               </div>
             </div>
           </div>
@@ -80,7 +80,7 @@ export function HelpSupport() {
               <MessageSquare size={15} />
               <div>
                 <div className="setting-row__title">WhatsApp / phone</div>
-                <div className="setting-row__desc">+233 XX XXX XXXX</div>
+                <div className="setting-row__desc">+233 234 567 890</div>
               </div>
             </div>
           </div>
