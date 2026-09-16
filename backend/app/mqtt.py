@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 import paho.mqtt.client as mqtt
-from sqlalchemy import select
 
 from app.config import settings
 from app.database import AsyncSessionLocal
@@ -40,11 +39,16 @@ def build_live_reading() -> dict[str, Any]:
     printer = latest_printer or {}
     status = latest_status or {}
 
+    # Always normalize the fault class to uppercase.
+    fault_class = str(
+        status.get("fault_class", "NORMAL")
+    ).upper()
+
     return {
         "type": "live_reading",
 
         # ML classification
-        "fault_class": status.get("fault_class", "NORMAL"),
+        "fault_class": fault_class,
         "confidence": status.get("confidence", 0.0),
 
         # Vibration
@@ -56,9 +60,11 @@ def build_live_reading() -> dict[str, Any]:
         "bed_temp": printer.get("bed_temp"),
 
         # Server timestamp
-        "received_at": datetime.now(timezone.utc).isoformat(),
+        "received_at": datetime.now(
+            timezone.utc
+        ).isoformat(),
 
-        # Optional database event ID
+        # Database event ID
         "event_id": status.get("event_id"),
     }
 
@@ -179,7 +185,9 @@ def on_message(
     global latest_status
 
     try:
-        payload = json.loads(msg.payload.decode("utf-8"))
+        payload = json.loads(
+            msg.payload.decode("utf-8")
+        )
 
         logger.info(
             "MQTT message received | topic=%s | payload=%s",
@@ -206,6 +214,7 @@ def on_message(
     # --------------------------------------------------------
 
     if msg.topic == settings.MQTT_TOPIC_VIBRATION:
+
         latest_vibration = {
             "vibe_x": payload.get("vibe_x"),
             "vibe_y": payload.get("vibe_y"),
@@ -218,9 +227,7 @@ def on_message(
             latest_vibration,
         )
 
-        # IMPORTANT:
         # Broadcast immediately.
-        # We do NOT wait for printpulse/status.
         asyncio.create_task(
             broadcast_live_reading()
         )
@@ -232,12 +239,23 @@ def on_message(
     # --------------------------------------------------------
 
     if msg.topic == settings.MQTT_TOPIC_TEMPERATURE:
+
         latest_printer = {
-            "nozzle_temp": payload.get("nozzle_actual"),
-            "nozzle_target": payload.get("nozzle_target"),
-            "bed_temp": payload.get("bed_actual"),
-            "bed_target": payload.get("bed_target"),
-            "timestamp": payload.get("timestamp"),
+            "nozzle_temp": payload.get(
+                "nozzle_actual"
+            ),
+            "nozzle_target": payload.get(
+                "nozzle_target"
+            ),
+            "bed_temp": payload.get(
+                "bed_actual"
+            ),
+            "bed_target": payload.get(
+                "bed_target"
+            ),
+            "timestamp": payload.get(
+                "timestamp"
+            ),
         }
 
         logger.info(
@@ -245,9 +263,7 @@ def on_message(
             latest_printer,
         )
 
-        # IMPORTANT:
         # Broadcast immediately.
-        # We do NOT wait for printpulse/status.
         asyncio.create_task(
             broadcast_live_reading()
         )
@@ -259,11 +275,17 @@ def on_message(
     # --------------------------------------------------------
 
     if msg.topic == settings.MQTT_TOPIC_STATUS:
-        latest_status = {
-            "fault_class": payload.get(
+
+        # Normalize fault class to uppercase.
+        fault_class = str(
+            payload.get(
                 "fault_class",
                 "NORMAL",
-            ),
+            )
+        ).upper()
+
+        latest_status = {
+            "fault_class": fault_class,
             "confidence": payload.get(
                 "confidence",
                 0.0,
@@ -275,14 +297,14 @@ def on_message(
             latest_status,
         )
 
-        # Save the fault event to PostgreSQL.
+        # Save the fault event first.
+        #
+        # The save function will update latest_status
+        # with the generated database event ID.
         asyncio.create_task(
-            save_fault_event(payload)
-        )
-
-        # Also immediately update the dashboard.
-        asyncio.create_task(
-            broadcast_live_reading()
+            save_and_broadcast_fault_event(
+                payload
+            )
         )
 
         return
@@ -291,6 +313,25 @@ def on_message(
         "Received message from unexpected topic: %s",
         msg.topic,
     )
+
+
+# ============================================================
+# SAVE FAULT EVENT AND BROADCAST
+# ============================================================
+
+async def save_and_broadcast_fault_event(
+    payload: dict[str, Any],
+) -> None:
+    """
+    Save an ML classification to PostgreSQL and then
+    broadcast the updated live reading.
+
+    The fault class is always normalized to uppercase.
+    """
+
+    await save_fault_event(payload)
+
+    await broadcast_live_reading()
 
 
 # ============================================================
@@ -307,11 +348,25 @@ async def save_fault_event(
     printpulse/status.
     """
 
+    global latest_status
+
     try:
-        fault_class = payload.get(
-            "fault_class",
-            "NORMAL",
-        )
+
+        # ----------------------------------------------------
+        # Fault classification
+        # ----------------------------------------------------
+
+        # Always convert the fault class to uppercase.
+        fault_class = str(
+            payload.get(
+                "fault_class",
+                "NORMAL",
+            )
+        ).upper()
+
+        # ----------------------------------------------------
+        # Confidence
+        # ----------------------------------------------------
 
         confidence = float(
             payload.get(
@@ -331,7 +386,9 @@ async def save_fault_event(
         if accel_rms_z is None:
             accel_rms_z = 0.0
 
-        accel_rms_z = float(accel_rms_z)
+        accel_rms_z = float(
+            accel_rms_z
+        )
 
         # ----------------------------------------------------
         # Printer temperatures
@@ -351,14 +408,19 @@ async def save_fault_event(
         if bed_temp is None:
             bed_temp = 0.0
 
-        nozzle_temp = float(nozzle_temp)
-        bed_temp = float(bed_temp)
+        nozzle_temp = float(
+            nozzle_temp
+        )
+
+        bed_temp = float(
+            bed_temp
+        )
 
         # ----------------------------------------------------
         # ESP32 timestamp
         #
         # The current printer payload contains a STRING
-        # timestamp, while your database field is BigInteger.
+        # timestamp, while the database field is BigInteger.
         #
         # Therefore we only use a numeric timestamp if the
         # status payload actually provides one.
@@ -407,9 +469,15 @@ async def save_fault_event(
                 confidence,
             )
 
-            # Store the generated database ID so the
-            # WebSocket message can include it.
-            latest_status["event_id"] = event.id
+            # ------------------------------------------------
+            # Store database ID for WebSocket message
+            # ------------------------------------------------
+
+            latest_status = {
+                "fault_class": fault_class,
+                "confidence": confidence,
+                "event_id": event.id,
+            }
 
     except Exception:
         logger.exception(
@@ -467,6 +535,7 @@ async def mqtt_listener() -> None:
     # --------------------------------------------------------
 
     try:
+
         logger.info(
             "Connecting to MQTT broker %s:%s...",
             settings.MQTT_BROKER,
@@ -484,9 +553,11 @@ async def mqtt_listener() -> None:
         )
 
     except Exception:
+
         logger.exception(
             "Failed to connect to MQTT broker."
         )
+
         return
 
     # --------------------------------------------------------
@@ -513,8 +584,11 @@ async def mqtt_listener() -> None:
         )
 
         try:
+
             client.disconnect()
+
         except Exception:
+
             logger.exception(
                 "Error while disconnecting MQTT client."
             )
@@ -528,8 +602,11 @@ async def mqtt_listener() -> None:
         )
 
         try:
+
             client.disconnect()
+
         except Exception:
+
             logger.exception(
                 "Error while disconnecting MQTT client."
             )
