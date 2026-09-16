@@ -5,6 +5,8 @@ import { FaultLog } from '../components/FaultLog'
 import { StatsBar } from '../components/StatsBar'
 import { AlertBanner } from '../components/AlertBanner'
 import { AlertSettings } from '../components/AlertSettings'
+import { HelpSupport } from '../components/HelpSupport'
+import { PrintPulseLogo } from '../components/PrintPulseLogo'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useApi } from '../hooks/useApi'
 import { useAlerts } from '../hooks/useAlerts'
@@ -17,7 +19,7 @@ interface Props {
   onUpdateProfile: (patch: Partial<Pick<User, 'alert_email' | 'alert_phone' | 'email_alerts_enabled' | 'sms_alerts_enabled'>>) => void
 }
 
-type Tab = 'live' | 'log' | 'settings'
+type Tab = 'live' | 'log' | 'settings' | 'help'
 
 const CALLSIGN = 'PRN-04 · FDM CELL A'
 
@@ -77,6 +79,7 @@ export function Dashboard({ token, user, onLogout, onUpdateProfile }: Props) {
 
         <div className="header-main">
           <div className="header-left">
+            <PrintPulseLogo width={40} height={26} color="var(--text-primary)" />
             <span className="header-title">PRINTPULSE</span>
             <span className="header-sub">Faultline Command Center</span>
           </div>
@@ -91,7 +94,7 @@ export function Dashboard({ token, user, onLogout, onUpdateProfile }: Props) {
         </div>
 
         <nav className="header-nav">
-          {(['live', 'log', 'settings'] as Tab[]).map(t => (
+          {(['live', 'log', 'settings', 'help'] as Tab[]).map(t => (
             <button
               key={t}
               className={`nav-btn ${tab === t ? 'nav-btn--active' : ''}`}
@@ -136,6 +139,7 @@ export function Dashboard({ token, user, onLogout, onUpdateProfile }: Props) {
             onSaveConfig={saveConfig}
           />
         )}
+        {tab === 'help' && <HelpSupport />}
       </main>
     </div>
   )
