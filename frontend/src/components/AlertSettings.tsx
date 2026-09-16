@@ -26,10 +26,7 @@ export function AlertSettings({ user, onUpdateProfile, config, onSaveConfig }: P
         <div className="settings-grid">
           <div className="setting-row">
             <div style={{ flex: 1 }}>
-              <div className="setting-row__title">Email alerts</div>
-              <div className="setting-row__desc" style={{ marginBottom: 6 }}>
-                Dispatch on non-normal class at or above threshold.
-              </div>
+              <div className="setting-row__title" style={{ marginBottom: 6 }}>Email alerts</div>
               <input
                 className="input-sm"
                 style={{ width: '100%' }}
@@ -49,10 +46,7 @@ export function AlertSettings({ user, onUpdateProfile, config, onSaveConfig }: P
 
           <div className="setting-row">
             <div style={{ flex: 1 }}>
-              <div className="setting-row__title">SMS alerts</div>
-              <div className="setting-row__desc" style={{ marginBottom: 6 }}>
-                Duty-phone path for thermal class only in production.
-              </div>
+              <div className="setting-row__title" style={{ marginBottom: 6 }}>SMS alerts</div>
               <input
                 className="input-sm"
                 style={{ width: '100%' }}
@@ -87,10 +81,6 @@ export function AlertSettings({ user, onUpdateProfile, config, onSaveConfig }: P
           onChange={e => onSaveConfig({ ...config, confidence_threshold: parseFloat(e.target.value) })}
           style={{ width: '100%', accentColor: 'var(--text-primary)' }}
         />
-        <div className="settings-footnote">
-          Controls when the in-app banner and sound fire locally. The server's actual email/SMS
-          threshold is set separately via ALERT_CONFIDENCE_THRESHOLD on Render.
-        </div>
       </div>
     </>
   )
