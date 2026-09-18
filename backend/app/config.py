@@ -1,6 +1,7 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
 from typing import List
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -9,7 +10,9 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
     )
 
+    # -------------------------------------------------------------------------
     # Database
+    # -------------------------------------------------------------------------
     DATABASE_URL: str = (
         "postgresql+asyncpg://printpulse:password@localhost:5432/printpulse_db"
     )
@@ -17,11 +20,13 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def _use_asyncpg_driver(cls, v: str) -> str:
-        # Managed Postgres providers (Railway, Render, Heroku, etc.) inject
-        # DATABASE_URL as postgres:// or postgresql://, which is the psycopg2
-        # scheme. SQLAlchemy's async engine needs the asyncpg driver spelled
-        # out explicitly, so rewrite it rather than requiring a manually
-        # edited env var on every deploy.
+        """
+        Managed Postgres providers such as Render may provide DATABASE_URL
+        using postgres:// or postgresql://.
+
+        SQLAlchemy's async engine requires the asyncpg driver, so convert
+        those URLs automatically.
+        """
         if v.startswith("postgres://"):
             return v.replace(
                 "postgres://",
@@ -38,9 +43,11 @@ class Settings(BaseSettings):
 
         return v
 
+    # -------------------------------------------------------------------------
     # CORS
-    # Comma-separated list of allowed frontend origins.
-    # Set this in Render for production.
+    # -------------------------------------------------------------------------
+    # In Render, set this to your deployed frontend URL, for example:
+    # https://printpulse-frontend.vercel.app
     CORS_ORIGINS: str = (
         "http://localhost:5173,http://localhost:3000"
     )
@@ -53,12 +60,16 @@ class Settings(BaseSettings):
             if origin.strip()
         ]
 
+    # -------------------------------------------------------------------------
     # JWT
+    # -------------------------------------------------------------------------
     SECRET_KEY: str = "change-this-secret"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # -------------------------------------------------------------------------
     # MQTT
+    # -------------------------------------------------------------------------
     MQTT_BROKER: str = "localhost"
     MQTT_PORT: int = 1883
     MQTT_TOPIC_VIBRATION: str = "printpulse/live"
@@ -67,18 +78,26 @@ class Settings(BaseSettings):
     MQTT_USERNAME: str = "PrintPulse"
     MQTT_PASSWORD: str = "FinalYearProject@2026"
 
+    # -------------------------------------------------------------------------
     # Email (SMTP)
+    # -------------------------------------------------------------------------
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USERNAME: str = ""
     SMTP_PASSWORD: str = ""
     ALERT_FROM_EMAIL: str = ""
 
+    # -------------------------------------------------------------------------
     # SMS (Arkesel)
+    # -------------------------------------------------------------------------
+    # The actual API key should be stored in Render's Environment Variables.
     ARKESEL_API_KEY: str = ""
 
-    # Alert config
+    # -------------------------------------------------------------------------
+    # Alert configuration
+    # -------------------------------------------------------------------------
     ALERT_CONFIDENCE_THRESHOLD: float = 0.85
+
     ALERT_FAULT_CLASSES: str = (
         "MECHANICAL_FAULT,THERMAL_ANOMALY"
     )
@@ -92,3 +111,10 @@ class Settings(BaseSettings):
         ]
 
 
+# -----------------------------------------------------------------------------
+# Create the settings object.
+# Other files import this as:
+#
+# from app.config import settings
+# -----------------------------------------------------------------------------
+settings = Settings()
