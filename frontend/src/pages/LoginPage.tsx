@@ -42,18 +42,7 @@ export function LoginPage({ onLogin, onRegister, error }: Props) {
   }
 
   return (
-    <div className="login-page">
-
-      {/* Background */}
-      <div className="login-bg">
-        <img
-          src="https://source.unsplash.com/1600x1200/?3d-printer,fdm-printer"
-          alt=""
-          className="login-bg__img"
-        />
-        <div className="login-bg__overlay" />
-      </div>
-
+  
       {/* Login card */}
       <div className="login-card">
 
