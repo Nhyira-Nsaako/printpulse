@@ -306,15 +306,3 @@ body {
 }
 
 
-/* ── Login background photo ─────────────────────────────────────────────── */
-.login-page { position: relative; overflow: hidden; }
-.login-bg { position: absolute; inset: 0; z-index: 0; }
-.login-bg__img {
-  width: 100%; height: 100%; object-fit: cover;
-  filter: grayscale(0.5) contrast(1.1) brightness(0.55);
-}
-.login-bg__overlay {
-  position: absolute; inset: 0;
-  background: radial-gradient(circle at 50% 40%, rgba(20,20,20,0.55), rgba(20,20,20,0.92) 75%);
-}
-.login-card { position: relative; z-index: 1; }
