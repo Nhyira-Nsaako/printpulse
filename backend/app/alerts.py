@@ -95,15 +95,19 @@ async def send_sms_alert(to_phone: str, event: FaultEvent) -> bool:
         return False
 
 
-async def dispatch_alerts(event: FaultEvent, db: AsyncSession) -> None:
+async def dispatch_alerts(event: FaultEvent, db: AsyncSession) -> bool:
     """
     Check whether this event should trigger alerts, then send to all
     active users, respecting each user's independent email/SMS toggle.
+    Returns True if the event passed the class/confidence gate (i.e.
+    alerts were actually attempted), False if it was skipped.
     """
     if event.fault_class.value not in settings.alert_fault_classes_list:
-        return
+        logger.info(f"Alert skipped: {event.fault_class.value} not in ALERT_FAULT_CLASSES")
+        return False
     if event.confidence < settings.ALERT_CONFIDENCE_THRESHOLD:
-        return
+        logger.info(f"Alert skipped: confidence {event.confidence} below threshold {settings.ALERT_CONFIDENCE_THRESHOLD}")
+        return False
 
     result = await db.execute(select(User).where(User.is_active == True))
     users = result.scalars().all()
@@ -113,3 +117,5 @@ async def dispatch_alerts(event: FaultEvent, db: AsyncSession) -> None:
             await send_email_alert(user.alert_email, event)
         if user.sms_alerts_enabled and user.alert_phone:
             await send_sms_alert(user.alert_phone, event)
+
+    return True
