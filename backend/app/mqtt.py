@@ -12,6 +12,7 @@ from app.config import settings
 from app.database import AsyncSessionLocal
 from app.models import FaultEvent
 from app.websocket import manager
+from app.alerts import dispatch_alerts
 
 logger = logging.getLogger(__name__)
 
