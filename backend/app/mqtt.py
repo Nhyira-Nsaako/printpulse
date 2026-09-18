@@ -357,7 +357,6 @@ async def save_fault_event(
         # Fault classification
         # ----------------------------------------------------
 
-        # Always convert the fault class to uppercase.
         fault_class = str(
             payload.get(
                 "fault_class",
@@ -419,12 +418,6 @@ async def save_fault_event(
 
         # ----------------------------------------------------
         # ESP32 timestamp
-        #
-        # The current printer payload contains a STRING
-        # timestamp, while the database field is BigInteger.
-        #
-        # Therefore we only use a numeric timestamp if the
-        # status payload actually provides one.
         # ----------------------------------------------------
 
         esp32_timestamp = payload.get(
@@ -463,11 +456,25 @@ async def save_fault_event(
 
             await db.refresh(event)
 
+            # ------------------------------------------------
+            # Dispatch alerts
+            # ------------------------------------------------
+
+            alert_triggered = await dispatch_alerts(
+                event,
+                db,
+            )
+
+            if alert_triggered:
+                event.alert_sent = True
+                await db.commit()
+
             logger.info(
-                "Fault event saved | id=%s | class=%s | confidence=%.3f",
+                "Fault event saved | id=%s | class=%s | confidence=%.3f | alert=%s",
                 event.id,
                 fault_class,
                 confidence,
+                alert_triggered,
             )
 
             # ------------------------------------------------
@@ -484,6 +491,7 @@ async def save_fault_event(
         logger.exception(
             "Failed to save fault event"
         )
+
 
 
 # ============================================================
